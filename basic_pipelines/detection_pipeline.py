@@ -96,16 +96,25 @@ class GStreamerDetectionApp(GStreamerApp):
             post_process_so=self.post_process_so,
             batch_size=self.batch_size,
             config_json=self.labels_json,
-            additional_params=self.thresholds_str)
+            additional_params=self.thresholds_str
+        )
         user_callback_pipeline = USER_CALLBACK_PIPELINE()
-        display_pipeline = DISPLAY_PIPELINE(video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps)
+
+        # Use a null sink to prevent displaying the output when using --use-frame
+        if self.user_data.use_frame:
+            display_pipeline = "fakesink sync=false"  # This will discard the frames
+        else:
+            display_pipeline = DISPLAY_PIPELINE(
+                video_sink=self.video_sink, sync=self.sync, show_fps=self.show_fps
+            )
+
         pipeline_string = (
             f'{source_pipeline} '
             f'{detection_pipeline} ! '
             f'{user_callback_pipeline} ! '
             f'{display_pipeline}'
         )
-        print(pipeline_string)
+        print("Pipeline String:\n", pipeline_string)
         return pipeline_string
 
 if __name__ == "__main__":

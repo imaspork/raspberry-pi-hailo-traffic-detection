@@ -1,0 +1,27 @@
+.webSockLoading {
+    height: 24px;
+    width: 248px;
+    .progress-indicator {
+        transition-property: transform;
+        transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+        transition-duration: 660ms;
+    }
+
+}
+
+pre {
+    background-color: #2e3440;  /* dark background */
+    color: #d8dee9;  /* light text */
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;  /* horizontal scroll for long lines */
+    font-family: 'Courier New', Courier, monospace;  /* monospaced font */
+    font-size: 1rem;  /* base font size */
+    line-height: 1.5;  /* increased line height */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);  /* subtle shadow */
+  }
+  
+  /* Optional: Add styling for inline code elements */
+  pre code {
+    color: #88c0d0;  /* lighter blue for code keywords */
+  }

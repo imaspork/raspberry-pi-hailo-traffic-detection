@@ -30,7 +30,7 @@ except ImportError:
 class app_callback_class:
     def __init__(self):
         self.frame_count = 0
-        self.use_frame = False
+        self.use_frame = True
         self.frame_queue = multiprocessing.Queue(maxsize=3)
         self.running = True
 
@@ -106,13 +106,96 @@ def get_caps_from_pad(pad: Gst.Pad):
         return None, None, None
 
 # This function is used to display the user data frame
+# def display_user_data_frame(user_data: app_callback_class):
+#     while user_data.running:
+#         frame = user_data.get_frame()
+#         if frame is not None:
+#             cv2.imshow("User Frame", frame)
+#         cv2.waitKey(1)
+#     cv2.destroyAllWindows()
+
+
+# This function is used to display the user data frame ISOLATES GREEN
+# def display_user_data_frame(user_data: app_callback_class):
+#     zone_vertices_light = np.array([[160, 370], [180, 370], [180, 340], [160, 340]], np.int32).reshape((-1, 1, 2))
+
+#     while user_data.running:
+#         frame = user_data.get_frame()
+#         if frame is not None:
+#             # Convert the frame to HSV color space
+#             hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+#             lower_bound = np.array([55, 68, 40])
+#             upper_bound = np.array([172, 196, 255])
+#             color_mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+#             zone_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+#             cv2.fillPoly(zone_mask, [zone_vertices_light], 255)
+#             combined_mask = cv2.bitwise_and(color_mask, zone_mask)
+            
+#             pixel_count = cv2.countNonZero(combined_mask)
+#             user_data.pixel_count.value = pixel_count
+#             cv2.imshow("User Frame", frame)
+
+#         # Wait for 1 ms between frames and allow for 'q' key to exit
+#         if cv2.waitKey(1) & 0xFF == ord('q'):
+#             break
+# ISOLATES RED
 def display_user_data_frame(user_data: app_callback_class):
+    zone_vertices_light = np.array([[160, 370], [180, 370], [180, 340], [160, 340]], np.int32).reshape((-1, 1, 2))
+
     while user_data.running:
         frame = user_data.get_frame()
         if frame is not None:
+            # Convert the frame to HSV color space
+            hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            
+            # Define two ranges for red color in HSV
+            # Red wraps around the hue spectrum, so we need two ranges
+            #  night
+            # lower_red1 = np.array([0, 120, 70])
+            # upper_red1 = np.array([10, 255, 255])
+            # lower_red2 = np.array([170, 120, 70])
+            # upper_red2 = np.array([180, 255, 255])
+
+            lower_red1 = np.array([0, 150, 150])    # Increased S and V minimums
+            upper_red1 = np.array([5, 255, 255])    # Reduced H range from 10 to 5
+
+            # Second red range (around H=180)
+            lower_red2 = np.array([175, 150, 150])  # Increased S and V minimums
+            upper_red2 = np.array([180, 255, 255])  # Narrowed H range
+
+
+            
+            # Create masks for both red ranges
+            mask1 = cv2.inRange(hsv_frame, lower_red1, upper_red1)
+            mask2 = cv2.inRange(hsv_frame, lower_red2, upper_red2)
+
+            
+            
+            # Combine the two red masks
+            color_mask = cv2.bitwise_or(mask1, mask2)
+            
+            # Create and apply the zone mask
+            zone_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(zone_mask, [zone_vertices_light], 255)
+            
+            # Combine zone and color masks
+            combined_mask = cv2.bitwise_and(color_mask, zone_mask)
+            
+            # Count red pixels in the zone
+            pixel_count = cv2.countNonZero(combined_mask)
+            user_data.pixel_count.value = pixel_count
+            
+            # Optional: Visualize the detection zone and mask for debugging
+            # Uncomment these lines if you want to see the detection in action
+            # cv2.imshow("Red Mask", color_mask)
+            # cv2.imshow("Combined Mask", combined_mask)
+            
             cv2.imshow("User Frame", frame)
-        cv2.waitKey(1)
-    cv2.destroyAllWindows()
+
+        # Wait for 1 ms between frames and allow for 'q' key to exit
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
 
 def get_default_parser():
     parser = argparse.ArgumentParser(description="Hailo App Help")
@@ -214,9 +297,10 @@ def SOURCE_PIPELINE(video_source, video_format='RGB', video_width=640, video_hei
         f'videoscale name={name}_videoscale n-threads=2 ! '
         f'{QUEUE(name=f"{name}_convert_q")} ! '
         f'videoconvert n-threads=3 name={name}_convert qos=false ! '
+        f'videoflip video-direction=90l ! '
         f'video/x-raw, format={video_format}, pixel-aspect-ratio=1/1 ! '
-        # f'video/x-raw, format={video_format}, width={video_width}, height={video_height} ! '
-    )
+)
+
 
     return source_pipeline
 
@@ -395,16 +479,18 @@ class GStreamerApp:
         try:
             self.pipeline = Gst.parse_launch(pipeline_string)
         except Exception as e:
-            print(e)
-            print(pipeline_string)
-            sys.exit(1)
+         print(e)
+         print(pipeline_string)
+         sys.exit(1)
 
-        # Connect to hailo_display fps-measurements
-        if self.show_fps:
-            print("Showing FPS")
-            self.pipeline.get_by_name("hailo_display").connect("fps-measurements", self.on_fps_measurement)
-
-        # Create a GLib Main Loop
+     # Conditionally connect to hailo_display fps-measurements if it exists
+        if not self.user_data.use_frame:
+            hailo_display = self.pipeline.get_by_name("hailo_display")
+            if hailo_display is not None:
+                print("Showing FPS")
+                hailo_display.connect("fps-measurements", self.on_fps_measurement)
+    
+    # Create a GLib Main Loop
         self.loop = GLib.MainLoop()
 
     def bus_call(self, bus, message, loop):
