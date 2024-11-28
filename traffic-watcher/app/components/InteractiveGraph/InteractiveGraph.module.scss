@@ -1,0 +1,9 @@
+.verticeController {
+    display: none;
+}
+
+@media (min-width: 700px) {
+    .verticeController {
+        display: flex;
+    }
+}

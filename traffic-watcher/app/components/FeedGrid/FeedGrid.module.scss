@@ -1,0 +1,24 @@
+.animationContainer {
+    position: relative;
+    z-index: 1000;
+}
+
+.blackout {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 150vh;
+    opacity: 0;
+    pointer-events: none;
+    background-color: black;
+    transition: opacity 700ms cubic-bezier(0.41, 0, 0.14, 1),
+        filter 700ms cubic-bezier(0.41, 0, 0.14, 1);
+
+    &.trigger {
+        opacity: 0.9;
+        filter: blur(20px);
+        pointer-events: auto;
+        z-index: 950;
+    }
+}
