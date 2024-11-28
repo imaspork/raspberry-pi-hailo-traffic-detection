@@ -27,18 +27,13 @@ class DatabaseManager:
         conn.close()
     
     def record_vehicle(self, is_runner: bool = False) -> None:
-        """
-        Record a vehicle detection in the database.
-        
-        Args:
-            is_runner (bool): Whether the vehicle ran a red light
-        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # Store current local time
         cursor.execute('''
-            INSERT INTO vehicle_tracking (vehicle_count, is_red_light_runner)
-            VALUES (?, ?)
+            INSERT INTO vehicle_tracking (timestamp, vehicle_count, is_red_light_runner)
+            VALUES (datetime('now', 'localtime'), ?, ?)
         ''', (1, is_runner))
         
         conn.commit()

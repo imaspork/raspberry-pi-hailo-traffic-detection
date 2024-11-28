@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from datetime import time
 import sqlite3
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -10,6 +9,8 @@ import zmq.asyncio
 import asyncio
 from typing import AsyncGenerator, Dict, List, Optional, TypedDict
 from pydantic import BaseModel
+from datetime import datetime, timedelta, time
+from typing import Literal
 
 class Vertex(BaseModel):
     id: int
@@ -76,7 +77,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    if not frame_consumer:  # Keep your original check
+    if not frame_consumer:
         await websocket.close(code=1011)
         return
         
@@ -131,81 +132,60 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"Error in websocket: {e}")
     finally:
+        # Clean up ZMQ resources first
         socket.close()
         context.term()
-        await websocket.close()
+        
+        # Only try to close the websocket if it hasn't been closed already
+        try:
+            await websocket.close()
+        except RuntimeError:
+            # WebSocket was already closed
+            pass
+
 @app.get("/stats")
 async def get_vehicle_stats(
-    start_date: str | None = None,
-    end_date: str | None = None
+   start_date: str | None = None,
+   end_date: str | None = None,
 ):
-    conn = sqlite3.connect('traffic.db')
-    cursor = conn.cursor()
-    
-    # Base query with modified time format
-    query = '''
-        SELECT 
-            strftime('%m-%d ') || 
-            CASE 
-                WHEN cast(strftime('%H', timestamp, 'localtime') as integer) > 12 
-                THEN (cast(strftime('%H', timestamp, 'localtime') as integer) - 12) || 'PM'
-                WHEN cast(strftime('%H', timestamp, 'localtime') as integer) = 12 
-                THEN '12PM'
-                WHEN cast(strftime('%H', timestamp, 'localtime') as integer) = 0 
-                THEN '12AM'
-                ELSE strftime('%H', timestamp, 'localtime') || 'AM'
-            END as hour,
-            COUNT(*) as total_vehicles,
-            SUM(CASE WHEN is_red_light_runner = 1 THEN 1 ELSE 0 END) as red_light_runners
-        FROM vehicle_tracking
-    '''
-    
-    # Add date filtering if provided
-    params = []
-    if start_date and end_date:
-        query += ' WHERE date(timestamp) BETWEEN ? AND ?'
-        params.extend([start_date, end_date])
-    
-    # Complete the query
-    query += '''
-        GROUP BY strftime('%Y-%m-%d %H', timestamp, 'localtime')
-        ORDER BY timestamp ASC
-    '''
-    
-    cursor.execute(query, params)
-    results = cursor.fetchall()
-    
-    stats = [
-        {
-            "hour": row[0],
-            "total_vehicles": row[1],
-            "red_light_runners": row[2]
-        }
-        for row in results
-    ]
-    
-    # Modified summary query to match date range
-    summary_query = '''
-        SELECT 
-            COUNT(*) as total_vehicles,
-            SUM(CASE WHEN is_red_light_runner = 1 THEN 1 ELSE 0 END) as red_light_runners
-        FROM vehicle_tracking
-    '''
-    if start_date and end_date:
-        summary_query += ' WHERE date(timestamp) BETWEEN ? AND ?'
-    
-    cursor.execute(summary_query, params)
-    summary = cursor.fetchone()
-    
-    conn.close()
-    return {
-        "hourly_stats": stats,
-        "summary": {
-            "total_vehicles": summary[0],
-            "total_red_light_runners": summary[1]
-        }
-    }
-
+   conn = sqlite3.connect('traffic.db')
+   cursor = conn.cursor()
+   
+   query = '''
+       SELECT 
+           strftime('%Y-%m-%d %H:00', timestamp, 'localtime') as full_timestamp,
+           COUNT(*) as total_vehicles,
+           SUM(CASE WHEN is_red_light_runner = 1 THEN 1 ELSE 0 END) as red_light_runners
+       FROM vehicle_tracking
+       WHERE datetime(timestamp, "localtime") BETWEEN datetime(?, "00:00:00") AND datetime(?, "23:59:59")
+   '''
+   
+   params = [start_date, end_date]
+   
+   query += '''
+       GROUP BY strftime('%Y-%m-%d %H', timestamp, 'localtime')
+       ORDER BY timestamp ASC
+   '''
+   
+   cursor.execute(query, params)
+   results = cursor.fetchall()
+   
+   stats = [
+       {
+           "hour": datetime.strptime(row[0], '%Y-%m-%d %H:00').strftime('%m-%d %I%p').replace(' 0', ' '),
+           "total_vehicles": row[1],
+           "red_light_runners": row[2]
+       }
+       for row in results
+   ]
+   
+   return {
+       "hourly_stats": stats,
+       "summary": {
+           "total_vehicles": sum(s["total_vehicles"] for s in stats),
+           "total_red_light_runners": sum(s["red_light_runners"] for s in stats)
+       }
+   }
 
 @app.get("/images")
 async def get_images():

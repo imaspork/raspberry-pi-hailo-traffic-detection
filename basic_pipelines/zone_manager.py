@@ -30,7 +30,6 @@ class ZoneManager:
                 with open(f'{zone_name}.json', 'r') as file:
                     data = json.load(file)
                     self.zones[zone_name] = np.array(data, np.int32).reshape((-1, 1, 2))
-                    print(f'new {zone_name} set', data)
             except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
                 print(f"Error loading {zone_name}: {e}")
                 self.zones[zone_name] = np.array(
