@@ -17,7 +17,7 @@ Real-time object detection system using Raspberry Pi 5 and Hailo-8 AI accelerato
 
 ## Overview
 
-This project implements real-time object detection using the Hailo-5 edge AI processor with Raspberry Pi 5. The primary goal of this project is to keep a real time, live webcam that analyzes the predestrian crossing and keeps track of how often vehicles run the red light.
+This project implements real-time object detection using the Hailo-8 edge AI processor with Raspberry Pi 5. The primary goal of this project is to keep a real time, live webcam that analyzes the predestrian crossing and keeps track of how often vehicles run the red light.
 
 ## Hardware Requirements
 
@@ -39,19 +39,24 @@ cd traffic-detection
 2. Install dependencies:
 
 ```bash
-./scripts/install_dependencies.sh
+sudo apt install hailo-all
+```
+
+```bash
+source setup_env.sh
+```
+
+- cd traffic-watcher
+
+```bash
+npm install
 ```
 
 3. Configure Hailo-5:
 
-```bash
-./scripts/setup_hailo.sh
-```
-
 ## Quick Start
 
-1. tbd
-2. Run detection:
+1. Run detection:
 
 ```bash
 ./start.sh
