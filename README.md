@@ -72,6 +72,8 @@ The system consists of three main components:
 - API Service: Handles data processing such as streaming and graph visualization data requests
 - Web Client: Hosts a live client to the user to view the object detection stream and data visualizations
 
+To view more details on what each file is responsible for, [read here](docs/detection-pipeline.md)
+
 ## Cloudflare Tunnel for Web Client Hosting
 
 In order to utilize a domain and steam to it, we must configure a cloudflare tunnel connection and set the NEXT_PUBLIC_BASE_DOMAIN_URL [environment variable file](traffic-watcher/.rename) in the web client to the domain registered on cloudflare tunnels. We must rename the .rename file to .env
