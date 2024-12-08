@@ -51,8 +51,6 @@ cd traffic-watcher
 npm install
 ```
 
-3. Configure Hailo-8 chip:
-
 ## Quick Start
 
 1. Run detection in the root of the project:
@@ -60,7 +58,7 @@ npm install
 
 - A web server that serves the web client
 - A websocket server that streams the video feed and object detection data
-- A python script that runs the object detection pipeline using your webcam
+- A python script that runs the object detection pipeline using a webcam
 
 ```bash
 ./start.sh
@@ -73,6 +71,12 @@ The system consists of three main components:
 - Detection Pipeline: Handles object recognition
 - API Service: Handles data processing such as streaming and graph visualization data requests
 - Web Client: Hosts a live client to the user to view the object detection stream and data visualizations
+
+## Cloudflare Tunnel for Web Client Hosting
+
+In order to utilize a domain and steam to it, we must configure a cloudflare tunnel connection and set the NEXT_PUBLIC_BASE_DOMAIN_URL [environment variable file](traffic-watcher/.rename) in the web client to the domain registered on cloudflare tunnels. We must rename the .rename file to .env
+
+To further increase security since we are exposing the raspberry pi to the open web, it is _highly recommended_ to create an SSL certificate and upload it to cloudflare tunnels. Besides, the websockset stream uses wss, which can not be utilized without SSL.
 
 More details in [Architecture Documentation](docs/architecture.md)
 
