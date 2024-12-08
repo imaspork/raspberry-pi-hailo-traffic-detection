@@ -1,5 +1,7 @@
+import asyncio
 import sys
 import gi
+import zmq
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib, GObject
 import os
@@ -105,56 +107,23 @@ def get_caps_from_pad(pad: Gst.Pad):
     else:
         return None, None, None
 
-# This function is used to display the user data frame
-# def display_user_data_frame(user_data: app_callback_class):
-#     while user_data.running:
-#         frame = user_data.get_frame()
-#         if frame is not None:
-#             cv2.imshow("User Frame", frame)
-#         cv2.waitKey(1)
-#     cv2.destroyAllWindows()
-
-
-# This function is used to display the user data frame ISOLATES GREEN
-# def display_user_data_frame(user_data: app_callback_class):
-#     zone_vertices_light = np.array([[160, 370], [180, 370], [180, 340], [160, 340]], np.int32).reshape((-1, 1, 2))
-
-#     while user_data.running:
-#         frame = user_data.get_frame()
-#         if frame is not None:
-#             # Convert the frame to HSV color space
-#             hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-#             lower_bound = np.array([55, 68, 40])
-#             upper_bound = np.array([172, 196, 255])
-#             color_mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
-#             zone_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
-#             cv2.fillPoly(zone_mask, [zone_vertices_light], 255)
-#             combined_mask = cv2.bitwise_and(color_mask, zone_mask)
-            
-#             pixel_count = cv2.countNonZero(combined_mask)
-#             user_data.pixel_count.value = pixel_count
-#             cv2.imshow("User Frame", frame)
-
-#         # Wait for 1 ms between frames and allow for 'q' key to exit
-#         if cv2.waitKey(1) & 0xFF == ord('q'):
-#             break
-# ISOLATES RED
 def display_user_data_frame(user_data: app_callback_class):
-    zone_vertices_light = np.array([[160, 370], [180, 370], [180, 340], [160, 340]], np.int32).reshape((-1, 1, 2))
+    frame_count = 0 
+
+
 
     while user_data.running:
         frame = user_data.get_frame()
+
         if frame is not None:
+            if frame_count % 500 == 0:
+                user_data.zone_manager.update_zones()
+                
+            frame_count += 1  # Increment frame count
+            
+            zone_vertices_light = user_data.zone_manager.get_zone('traffic_zone')
             # Convert the frame to HSV color space
             hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            
-            # Define two ranges for red color in HSV
-            # Red wraps around the hue spectrum, so we need two ranges
-            #  night
-            # lower_red1 = np.array([0, 120, 70])
-            # upper_red1 = np.array([10, 255, 255])
-            # lower_red2 = np.array([170, 120, 70])
-            # upper_red2 = np.array([180, 255, 255])
 
             lower_red1 = np.array([0, 150, 150])    # Increased S and V minimums
             upper_red1 = np.array([5, 255, 255])    # Reduced H range from 10 to 5
@@ -520,7 +489,6 @@ class GStreamerApp:
                 print("Error rewinding the video.")
         else:
             self.shutdown()
-
 
     def shutdown(self, signum=None, frame=None):
         print("Shutting down... Hit Ctrl-C again to force quit.")

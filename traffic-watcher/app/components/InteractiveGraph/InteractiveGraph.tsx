@@ -131,7 +131,7 @@ const PersistentGraphPopover: React.FC<PersistentGraphPopoverProps> = ({
         { id: 4, x: 200, y: 200 },
     ]);
     const [activeVertice, setActiveVertice] = useState<
-        "green_zone" | "red_zone" | "traffic_zone"
+        "green_zone" | "green_zone_2" | "red_zone" | "traffic_zone"
     >("green_zone");
 
     return (
@@ -167,6 +167,9 @@ const PersistentGraphPopover: React.FC<PersistentGraphPopoverProps> = ({
                                         </SelectItem>
                                         <SelectItem value="green_zone">
                                             Green Zone
+                                        </SelectItem>
+                                        <SelectItem value="green_zone_2">
+                                            Green Zone 2
                                         </SelectItem>
                                         <SelectItem value="traffic_zone">
                                             Traffic Zone

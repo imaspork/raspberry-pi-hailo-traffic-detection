@@ -6,6 +6,7 @@ import DataGraphs from "../DataGraphs/DataGraphs";
 import { fetchVehicleStats } from "./UserPanel.helpers";
 import FeedGrid from "../FeedGrid/FeedGrid";
 import { Progress } from "@/components/ui/progress";
+import SystemInfo from "../SystemInfo/SystemInfo";
 
 export const dynamic = "force-dynamic";
 
@@ -26,94 +27,18 @@ const UserPanel: React.FC = async () => {
                 <div className="flex items-center gap-4"></div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-card rounded-xl p-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div className="client-feed col-span-4">
+                    <FeedGrid />
+                </div>
+                <div className="bg-card rounded-xl p-6 col-span-1">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-semibold">
                             Raspberry Pi 5 System Info
                         </h2>
-                        <HardDrive />
                     </div>
+                    <SystemInfo systemInfo={systemInfo} />
 
-                    <div className="flex flex-wrap gap-16 justify-center ">
-                        {systemInfo.cpuUsage.map((usage, index) => (
-                            <div key={index} className="text-center">
-                                <div className="relative w-32 h-32 mx-auto mb-3">
-                                    <svg className="w-full h-full transform -rotate-90">
-                                        <circle
-                                            cx="64"
-                                            cy="64"
-                                            r="56"
-                                            stroke="currentColor"
-                                            strokeWidth="16"
-                                            fill="none"
-                                            className="text-accent"
-                                        />
-                                        <circle
-                                            cx="64"
-                                            cy="64"
-                                            r="56"
-                                            stroke="currentColor"
-                                            strokeWidth="16"
-                                            fill="none"
-                                            strokeDasharray={`${
-                                                parseFloat(usage) * 3.52
-                                            } 352`}
-                                            className="text-accent-foreground"
-                                        />
-                                    </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-base">
-                                        {usage}%
-                                    </span>
-                                </div>
-                                <span className="text-base text-gray-400">
-                                    Core {index}
-                                </span>
-                            </div>
-                        ))}
-                        <div className="space-y-3">
-                            {[
-                                [
-                                    "CPU Temperature",
-                                    `${systemInfo.cpuTemp.toFixed(1)}°C`,
-                                ],
-                            ].map(([label, value]) => (
-                                <div key={24} className="text-center">
-                                    <div className="relative w-32 h-32 mx-auto mb-3">
-                                        <svg className="w-full h-full transform -rotate-90">
-                                            <circle
-                                                cx="64"
-                                                cy="64"
-                                                r="56"
-                                                stroke="currentColor"
-                                                strokeWidth="16"
-                                                fill="none"
-                                                className="text-accent"
-                                            />
-                                            <circle
-                                                cx="64"
-                                                cy="64"
-                                                r="56"
-                                                stroke="currentColor"
-                                                strokeWidth="16"
-                                                fill="none"
-                                                strokeDasharray={`${
-                                                    parseFloat(value) * 3.52
-                                                } 352`}
-                                                className="text-accent-foreground"
-                                            />
-                                        </svg>
-                                        <span className="absolute inset-0 flex items-center justify-center text-base">
-                                            {value}
-                                        </span>
-                                    </div>
-                                    <span className="text-base text-gray-400">
-                                        CPU Temp
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                     <h3 className="text-lg font-semibold text-foreground mt-4">
                         Memory Usage
                     </h3>
@@ -131,10 +56,6 @@ const UserPanel: React.FC = async () => {
                         }
                         className="h-2 mt-4"
                     />
-                </div>
-
-                <div className="client-feed">
-                    <FeedGrid />
                 </div>
             </div>
 

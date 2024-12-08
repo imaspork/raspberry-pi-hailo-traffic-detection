@@ -38,7 +38,7 @@ class FrameProcessor:
                 x2, y2 = int(bbox.xmax() * width), int(bbox.ymax() * height)
                 car_center = (x1 + (x2 - x1) // 2, y1 + (y2 - y1) // 2)
                 
-                if (zone_manager.is_in_zone(zone_manager.get_zone('green_zone'), car_center) or 
+                if (zone_manager.is_in_zone(zone_manager.get_zone('green_zone'), car_center) or zone_manager.is_in_zone(zone_manager.get_zone('green_zone_2'), car_center) or 
                     zone_manager.is_in_zone(zone_manager.get_zone('red_zone'), car_center)):
                     relevant_detections.append(detection)
                     detection_count += 1

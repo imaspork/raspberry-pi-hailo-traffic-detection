@@ -10,13 +10,15 @@ class ZoneManager:
         self.zones = {
             'red_zone': np.array(default_zones['red_zone'], np.int32).reshape((-1, 1, 2)),
             'green_zone': np.array(default_zones['green_zone'], np.int32).reshape((-1, 1, 2)),
+            'green_zone_2': np.array(default_zones['green_zone_2'], np.int32).reshape((-1, 1, 2)),
             'traffic_zone': np.array(default_zones['traffic_zone'], np.int32).reshape((-1, 1, 2))
         }
         
         self.fallback_zones = {
             'red_zone': [[80, 382], [160, 410], [138, 430], [80, 405]],
-            'traffic_zone': [[160, 370], [180, 370], [180, 340], [160, 340]],
-            'green_zone': [[210, 420], [555, 530], [560, 590], [165, 425]]
+            'traffic_zone': [[177.0532989501953, 384.20062255859375], [192.10031127929688, 388.2131652832031], [189.09091186523438, 409.27899169921875], [178.05642700195312, 408.2758483886719]],
+            'green_zone': [[210, 420], [555, 530], [560, 590], [165, 425]],
+            'green_zone_2': [[210, 420], [555, 530], [560, 590], [165, 425]]
         }
     
     def get_zone(self, zone_name: str) -> np.ndarray:
@@ -25,7 +27,7 @@ class ZoneManager:
     
     def update_zones(self) -> None:
         """Update zones from JSON files if available."""
-        for zone_name in ['red_zone', 'green_zone', 'traffic_zone']:
+        for zone_name in ['red_zone', 'green_zone', 'green_zone_2', 'traffic_zone']:
             try:
                 with open(f'{zone_name}.json', 'r') as file:
                     data = json.load(file)
@@ -48,6 +50,13 @@ class ZoneManager:
         cv2.polylines(
             frame, 
             [self.zones['green_zone']], 
+            isClosed=True, 
+            color=(0, 240, 44), 
+            thickness=1
+        )
+        cv2.polylines(
+            frame, 
+            [self.zones['green_zone_2']], 
             isClosed=True, 
             color=(0, 240, 44), 
             thickness=1

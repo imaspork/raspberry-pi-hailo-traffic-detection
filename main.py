@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 import base64
 import json
 from pathlib import Path
+import psutil
 import zmq.asyncio
 import asyncio
 from typing import AsyncGenerator, Dict, List, Optional, TypedDict
@@ -21,12 +22,13 @@ class VertexGroup(BaseModel):
     vertices: List[Vertex]
     label: str
 
-
 class FrameConsumer:
     def __init__(self, port: int = 5555):
+        self.port = port
         self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.SUB)
         self.socket.setsockopt(zmq.RCVHWM, 2)
+        self.socket.setsockopt(zmq.LINGER, 0)  # Add LINGER option
         self.socket.connect(f"tcp://localhost:{port}")
         self.socket.subscribe(b"")
         
@@ -38,10 +40,23 @@ class FrameConsumer:
             return None
     
     async def close(self):
-        self.socket.close()
-        self.context.term()
+        try:
+            if hasattr(self, 'socket') and self.socket:
+                self.socket.close(linger=0)
+                self.socket = None
+            if hasattr(self, 'context') and self.context:
+                await self.context.term()
+                self.context = None
+        except Exception as e:
+            print(f"Error during FrameConsumer cleanup: {e}")
 
-        # look into claude and validate cloud flare tunnel config
+    def __del__(self):
+        """Ensure cleanup even if close() wasn't called"""
+        if hasattr(self, 'socket') and self.socket:
+            self.socket.close(linger=0)
+        if hasattr(self, 'context') and self.context:
+            self.context.term()
+
 
 frame_consumer: FrameConsumer | None = None
 
@@ -67,11 +82,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global frame_consumer
     try:
         frame_consumer = FrameConsumer()
-        init_db()  # Initialize database
+        init_db()
         yield
     finally:
         if frame_consumer:
             await frame_consumer.close()
+            frame_consumer = None
+        # Clean up any lingering ZMQ contexts
+        try:
+            for ctx in zmq.Context.instance().contexts:
+                ctx.term()
+        except Exception as e:
+            print(f"Error during ZMQ context cleanup: {e}")
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -83,19 +106,18 @@ async def websocket_endpoint(websocket: WebSocket):
         
     await websocket.accept()
     
-    # Create ZMQ subscriber
-    context = zmq.Context()
+    # Create ZMQ context and socket
+    context = zmq.asyncio.Context()  # Use asyncio context instead
     socket = context.socket(zmq.SUB)
+    socket.setsockopt(zmq.RCVHWM, 2)  # Set high water mark
     socket.connect("tcp://localhost:5555")
     socket.setsockopt_string(zmq.SUBSCRIBE, "")
     
     try:
         while True:
             try:
-                # Receive message from ZMQ
-                message = await asyncio.get_event_loop().run_in_executor(
-                    None, socket.recv
-                )
+                # Use asyncio-native receive
+                message = await socket.recv()
                 
                 # Split the message using the delimiter
                 delimiter = b':::'
@@ -132,16 +154,13 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"Error in websocket: {e}")
     finally:
-        # Clean up ZMQ resources first
-        socket.close()
-        context.term()
-        
-        # Only try to close the websocket if it hasn't been closed already
+        # Proper cleanup sequence
         try:
-            await websocket.close()
-        except RuntimeError:
-            # WebSocket was already closed
-            pass
+            socket.setsockopt(zmq.LINGER, 0)  # Don't wait for unsent messages
+            socket.close()
+            await context.term()  # Use async termination
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
 
 @app.get("/stats")
 async def get_vehicle_stats(
@@ -235,6 +254,8 @@ def serialize_and_write_to_file(obj: VertexGroup):
         write_zone_to_file('red_zone.json', new_vertices)
     elif obj.label == 'green_zone':
         write_zone_to_file('green_zone.json', new_vertices)
+    elif obj.label == 'green_zone_2':
+        write_zone_to_file('green_zone_2.json', new_vertices)
     else:
         write_zone_to_file('traffic_zone.json', new_vertices)
 
@@ -270,7 +291,9 @@ async def create_item(item: VertexGroup):
         "item_data": item.model_dump()
     }
 
+
 if __name__ == "__main__":
+    
     import uvicorn
     uvicorn.run(
         app,

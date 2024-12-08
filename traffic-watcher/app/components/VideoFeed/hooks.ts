@@ -22,7 +22,9 @@ export const useVideoFeed = (): VideoFeedState => {
         const connectWebSocket = () => {
             if (typeof window === "undefined") return;
 
-            socket = new WebSocket("wss://redlightwatcher.com/py/ws");
+            socket = new WebSocket(
+                `wss://${process.env.NEXT_PUBLIC_BASE_DOMAIN_URL}/py/ws`
+            );
 
             socket.onopen = () => {
                 console.log("Connected to video feed");

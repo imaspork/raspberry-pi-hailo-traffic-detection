@@ -14,7 +14,9 @@ export const fetchVehicleStats = async (
     }
 
     const response = await fetch(
-        `https://redlightwatcher.com/py/stats?${params.toString()}`
+        `https://${
+            process.env.NEXT_PUBLIC_BASE_DOMAIN_URL
+        }/py/stats?${params.toString()}`
     );
     const data = await response.json();
     return data;

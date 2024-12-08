@@ -3,11 +3,13 @@ import datetime
 import json
 import multiprocessing
 import os
+import socket
 import sqlite3
 
 # Third-party imports
 import cv2
 import gi
+import psutil
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 import hailo
@@ -51,6 +53,8 @@ class user_app_callback_class(app_callback_class):
         self.total_vehicles_seen = 0
         self.saved_image_count = 0
         self.max_in_green = 0
+        self.red_light_trigger_check = False
+        self.detection_buffer = []
         
         # Initialize zones from config
         self.zone_manager = ZoneManager(DEFAULT_ZONES)
@@ -88,12 +92,17 @@ class user_app_callback_class(app_callback_class):
 # -----------------------------------------------------------------------------------------------
 # Inheritance from the app_callback_class
 def app_callback(pad, info, user_data):
+    if not hasattr(user_data, 'publisher') or user_data.publisher is None:
+        user_data.setup_publisher()
     buffer = info.get_buffer()
     if buffer is None:
         return Gst.PadProbeReturn.OK
+    
 
     user_data.increment()
     user_data.frame_count += 1
+
+    print(f"Amount of red detected: {user_data.pixel_count.value}")
 
     format, width, height = get_caps_from_pad(pad)
     frame = None
@@ -122,6 +131,20 @@ def app_callback(pad, info, user_data):
             buffer, width, height, user_data.zone_manager
         )
 
+
+        # Add detection smoothing
+        buffer_size = 5  # Adjust based on frame rate
+
+        if len(user_data.detection_buffer) >= buffer_size:
+            user_data.detection_buffer.pop(0)
+        user_data.detection_buffer.append(detection_count)
+
+        smoothed_count = sum(user_data.detection_buffer) / len(user_data.detection_buffer)
+        user_data.max_in_green = max(user_data.max_in_green, smoothed_count)
+        if smoothed_count < user_data.max_in_green:
+            user_data.red_light_trigger_check = True  
+        
+
         # Update vehicle tracker
         user_data.vehicle_tracker.update(user_data.frame_count, relevant_detections, width, height)
 
@@ -138,7 +161,11 @@ def app_callback(pad, info, user_data):
                 
                 # Handle red light runners
                 if user_data.light_status == "Red Light" and not vehicle.counted_as_runner:
-                    user_data.red_light_runner_count += 1
+                    if user_data.red_light_trigger_check:
+                        user_data.red_light_runner_count += 1
+                        # Remove this line to allow multiple detections:
+                        # user_data.red_light_trigger_check = False
+                        user_data.max_in_green = smoothed_count  # Update baseline after violation
                     vehicle.counted_as_runner = True
                     
                     # Save violation image if needed
@@ -152,15 +179,16 @@ def app_callback(pad, info, user_data):
                         print(f"Saved red light runner image: {filename}")
                     elif user_data.saved_image_count >= MAX_SAVED_IMAGES:
                         print("Image save limit reached. No more images will be saved.")
+                            # Draw vehicle information
+                user_data.frame_processor.draw_vehicle_info(
+                    frame, 
+                    vehicle_id, 
+                    vehicle.bbox,
+                    is_runner=(vehicle.counted_as_runner),
+                    light_status=user_data.light_status
+                )
 
-            # Draw vehicle information
-            user_data.frame_processor.draw_vehicle_info(
-                frame, 
-                vehicle_id, 
-                vehicle.bbox,
-                is_runner=(vehicle.counted_as_runner),
-                light_status=user_data.light_status
-            )
+
 
         # Draw statistics
         stats = {
@@ -188,7 +216,37 @@ def app_callback(pad, info, user_data):
 
     return Gst.PadProbeReturn.OK
 
+
+def check_port_usage(port=5555):
+    """Check what process is using the port"""
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            connections = psutil.Process(proc.info['pid']).connections()
+            for conn in connections:
+                if conn.laddr.port == port:
+                    print(f"Process using port {port}:")
+                    print(f"PID: {proc.info['pid']}")
+                    print(f"Name: {proc.info['name']}")
+                    print(f"Command: {' '.join(proc.info['cmdline'] or [])}")
+                    return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    return False
+
+def is_port_in_use(port=5555):
+    """Test if a port is in use"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+    
+
 if __name__ == "__main__":
+    # Check port status before starting
+    if is_port_in_use(5555):
+        print("Port 5555 is already in use!")
+        check_port_usage(5555)
+    else:
+        print("Port 5555 is available")
+    
     user_data = user_app_callback_class()
     app = GStreamerDetectionApp(app_callback, user_data)
     try:

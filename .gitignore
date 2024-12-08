@@ -156,9 +156,10 @@ cython_debug/
 # Mac OS X DS_Store
 .DS_Store
 
-# hailo-rpi5-examples specific
-traffic-detection/*
 resources/*.mp4
 resources/*.hef
 resources/*.so
 traffic.db
+traffic-detection/*
+red_light_runners
+red_light_runners/*

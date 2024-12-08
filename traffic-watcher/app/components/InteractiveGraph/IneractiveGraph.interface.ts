@@ -6,7 +6,11 @@ export interface VerticesInterface {
     y: number;
 }
 
-export type ZoneTypes = "green_zone" | "red_zone" | "traffic_zone";
+export type ZoneTypes =
+    | "green_zone"
+    | "green_zone_2"
+    | "red_zone"
+    | "traffic_zone";
 
 export type VerticesGroup = Array<VerticesInterface>;
 
@@ -18,7 +22,7 @@ export interface PersistentGraphPopoverProps {
 
 export interface InteractiveGraphProps {
     vertices: VerticesGroup;
-    activeVertice: "red_zone" | "green_zone" | "traffic_zone";
+    activeVertice: "red_zone" | "green_zone" | "green_zone_2" | "traffic_zone";
     setVertices: React.Dispatch<React.SetStateAction<VerticesGroup>>;
 }
 
