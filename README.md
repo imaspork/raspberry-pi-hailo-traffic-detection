@@ -33,7 +33,7 @@ This project implements real-time object detection using the Hailo-8 AI Accelera
 
 ```bash
 git clone https://github.com/imaspork/raspberry-pi-hailo-traffic-detection.git
-cd traffic-detection
+cd raspberry-pi-hailo-traffic-detection
 ```
 
 2. Install dependencies:
