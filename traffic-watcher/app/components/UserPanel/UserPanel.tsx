@@ -1,4 +1,3 @@
-import { getSystemDetails } from "@/app/lib/system";
 import React from "react";
 import { HardDrive } from "react-feather";
 import RunnerImages from "../RunnerImages/RunnerImages";
@@ -7,6 +6,7 @@ import { fetchVehicleStats } from "./UserPanel.helpers";
 import FeedGrid from "../FeedGrid/FeedGrid";
 import { Progress } from "@/components/ui/progress";
 import SystemInfo from "../SystemInfo/SystemInfo";
+import { getSystemDetails } from "@/lib/system";
 
 export const dynamic = "force-dynamic";
 
