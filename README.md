@@ -43,6 +43,10 @@ sudo apt install hailo-all
 ```
 
 ```bash
+./compile_postprocess.sh
+```
+
+```bash
 source setup_env.sh
 ```
 
@@ -50,6 +54,9 @@ source setup_env.sh
 cd traffic-watcher
 npm install
 ```
+
+## Model Selection
+Choose any precompiled .hef model for hailo. v8s has been uploaded as the default but may be changed to anything. Maintaining a model that outputs 640x640 would allow for seamless changes. Any differing resolution will require more tweaking of the ui
 
 ## Quick Start
 
